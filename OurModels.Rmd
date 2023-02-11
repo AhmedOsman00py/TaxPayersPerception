@@ -1,0 +1,200 @@
+---
+title: "Bayésien"
+author: "Ibtissem REBAI"
+date: "10/02/2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("rstan")
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("foreign")
+source("stanTools.R")
+source("functions.R")
+library("tidyverse")
+```
+
+## Data
+
+```{r}
+datatax <- read.csv('dataset.csv',header=T)
+
+```
+
+
+## 1. Modèle linaire simple (taxpayer_gap vs gender)
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v2 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#on transforme en facteur notre variable predictor
+datatax_v2$gender <- as.factor(datatax_v2$gender)
+
+x <- model.matrix(~ gender, data = datatax_v2)
+
+#on enleve intercept
+x <- x[,-1]
+
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10); 
+}
+"
+
+N <- nrow(datatax_v2)
+K <- ncol(x)
+
+fit <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v2$taxpayer_gap))
+
+parametersToPlot <- c("alpha","beta")
+
+
+#convergence check
+mcmcHistory(fit, parametersToPlot)
+mcmcDensity(fit, parametersToPlot,byChain = TRUE)
+mcmcDensity(fit, parametersToPlot)
+
+#estimation des parametres
+ptable <- parameterTable(fit)
+
+
+### CCL : 1 betas sur 2 est significativement diff de 0 car IC95% ne contient pas 0
+##le betas des femmes est sifnificative
+##les femmes font moins d'erreur que les hommes concernant la percpection des taxes         
+
+
+
+
+```
+
+### With package rstanarm
+
+```{r}
+
+library("rstanarm")
+
+
+fit_1 <- stan_glm(taxpayer_gap ~ factor(gender), data=datatax, refresh=0)
+
+print(fit_1, digits=2)
+
+coefs <- coef(fit_1)
+
+
+
+```
+
+
+
+
+## 1. Modèle linaire simple (taxpayer_gap vs education)
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v3 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes de prédictor
+datatax_v3 <- datatax_v3 %>% filter(!is.na(educ))
+
+#on transforme en facteur notre variable predictor
+datatax_v3$educ <- as.factor(datatax_v3$educ)
+
+x <- model.matrix(~ educ, data = datatax_v3)
+
+#on enleve intercept
+x <- x[,-1]
+
+
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10); 
+}
+"
+
+N <- nrow(datatax_v3)
+K <- ncol(x)
+
+fit <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v3$taxpayer_gap))
+
+parametersToPlot <- c("alpha","beta")
+
+
+#convergence check
+mcmcHistory(fit, parametersToPlot)
+mcmcDensity(fit, parametersToPlot,byChain = TRUE)
+mcmcDensity(fit, parametersToPlot)
+
+#estimation des parametres
+ptable <- parameterTable(fit)
+
+### CCL : 1 betas sur 5 est significativement diff de 0 car IC95% ne contient pas 0
+##le betas educ4 (Vocational or community college degree (4)) est sifnificative
+         
+
+```
+
+### With package rstanarm
+
+```{r}
+
+library("rstanarm")
+
+
+fit_2 <- stan_glm(taxpayer_gap ~ factor(educ), data=datatax, refresh=0)
+
+print(fit_2, digits=2)
+
+
+
+
+```
+## 1. Modèle linaire multiple (avec pls les variables)
+
+```{r}
+
+
+
+
+
+```
