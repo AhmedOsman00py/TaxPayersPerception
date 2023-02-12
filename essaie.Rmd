@@ -1,0 +1,44 @@
+---
+title: "Taxpayer"
+author: "COULIBALY Bourahima"
+date: "10/02/2023"
+output: 
+    prettydoc::html_pretty:
+    toc: true
+    toc_depth: 1
+    number_sections: true
+    css: style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(scatterplot3d)
+library(knitr)
+library(dplyr)
+library(gridExtra)
+library("ggfortify")
+library("tidyverse")
+library("reshape2")
+library(faraway)
+library(leaps)
+library(mlbench)
+library(tidyverse)
+library(klaR)
+library(GGally)
+library(ggcorrplot)
+library(funModeling)
+library(corrplot)
+library(e1071)
+library(caret)
+library(yardstick)
+```
+
+## Importation des données 
+
+```{r , include=FALSE}
+
+data <- read.csv("database.csv", sep = ",", header = TRUE)
+glimpse(data)
+```
+
