@@ -16,7 +16,6 @@ source("stanTools.R")
 source("functions.R")
 library("tidyverse")
 library("rstanarm")
-
 ```
 
 ## Data
