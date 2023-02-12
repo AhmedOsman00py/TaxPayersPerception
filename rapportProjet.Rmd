@@ -74,12 +74,23 @@ Nous avons également rajouter d'autre variables à prendre en compte que nous a
 ## Analyse descriptive
 
 ```{r}
-datatax <- read.csv('dataset.csv',header=T)
+datatax <- read.csv('dataset.csv', header=T)
 ```
 
-Dans un premier temps nous avons crée une nouvelle variable $\mathtt{taxpayer\_gap}$ qui correspond à la différence absolue entre $90\%$ et $\mathtt{percenttp}$ indiquant donc à quelle point une personne a fait une erreur : 0 indique que la personne n'a pas fait d'erreur et a repondu $90\%$ à la question "What percentage of adults in the United States do you think are taxpayers?". Et plus elle est loin de 0 plus elle a une perception erroné de qui paye les taxes au US.
+Dans un premier temps nous avons crée une nouvelle variable $\mathtt{taxpayer\_gap}$ qui correspond à la différence absolue entre $90\%$ et $\mathtt{percenttp}$ indiquant donc à quelle point une personne a fait une erreur : 0 indique que la personne n'a pas fait d'erreur et a repondu $90\%$ à la question "What percentage of adults in the United States do you think are taxpayers?". Et plus elle est loin de 0 plus elle a une perception erroné du pourcentage des personnes qui paye des taxes au US.
 
-Ensuite, nous avons du procéder a un traitement de ... (AHMED)
+> *N.B le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable `taxpayer` sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)*
+
+Ensuite, nous avons du procéder à un traitement d'analyse de sentiments sur les variables textuelles, en utilisant une `nltk` *(Natural Language Toolkit)* bibliothèque `python` déjà entraînée sur un large corpus.   
+On a ainsi créer des nouvelles variables qui ont le même nom de la variable pour laquelle on a effectuer le traitement *(pour les données textuelles)* suivi d'un suffixe **`_sentiment`**    
+
+Ces variables contiennent un score pour chaque observation qui varie entre $[-1, 1]$, et on s'est fixé à un seuil **5%** :   
+
+- si la valeur est supérieur à 5% : le sentiment est **positif** (encodage -> **1**)
+
+- si la valeur est inférieure à 5% : le sentiment est **négatif** (encodage -> **-1**)
+
+- sinon : le sentiment est **neutre** (encodage -> **0**)
 
 
 
