@@ -5,11 +5,8 @@ date: "10/02/2023"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
-```{r}
+```{r setup, include=FALSE}
 library("rstan")
 library("ggplot2")
 library("bayesplot")
@@ -18,6 +15,8 @@ library("foreign")
 source("stanTools.R")
 source("functions.R")
 library("tidyverse")
+library("rstanarm")
+
 ```
 
 ## Data
@@ -95,7 +94,6 @@ ptable <- parameterTable(fit)
 
 ```{r}
 
-library("rstanarm")
 
 
 fit_1 <- stan_glm(taxpayer_gap ~ factor(gender), data=datatax, refresh=0)
@@ -111,7 +109,7 @@ coefs <- coef(fit_1)
 
 
 
-## 1. Modèle linaire simple (taxpayer_gap vs education)
+## 2. Modèle linaire simple (taxpayer_gap vs education)
 
 
 ```{r}
@@ -178,8 +176,6 @@ ptable <- parameterTable(fit)
 
 ```{r}
 
-library("rstanarm")
-
 
 fit_2 <- stan_glm(taxpayer_gap ~ factor(educ), data=datatax, refresh=0)
 
@@ -189,12 +185,88 @@ print(fit_2, digits=2)
 
 
 ```
-## 1. Modèle linaire multiple (avec pls les variables)
+
+## 3. Modèle linaire multiple (avec pls les variables)
 
 ```{r}
 
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v4 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes des prédictors
+datatax_v4 <- datatax_v4 %>% filter(!is.na(educ),!is.na(gender),!is.na(partyid),!is.na(educ),!is.na(taxpayer),
+              !is.na(feelfedgov_1), !is.na(firstthought_sentiment))
 
 
 
+# Encoder les variables catégorielles en variables dummies
+dummies <- model.matrix(~ factor(educ) + factor(gender) + factor(partyid) + factor(taxpayer) + factor(firstthought_sentiment), data = datatax_v4)
+
+x <- dummies[,-1]
+
+# Définir le modèle en utilisant les variables dummies
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10); 
+}
+"
+
+N <- nrow(datatax_v4)
+K <- ncol(x)
+
+fit <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v4$taxpayer_gap))
+
+parametersToPlot <- c("alpha","beta")
+
+
+#convergence check
+mcmcHistory(fit, parametersToPlot)
+mcmcDensity(fit, parametersToPlot,byChain = TRUE)
+mcmcDensity(fit, parametersToPlot)
+
+#estimation des parametres
+ptable <- parameterTable(fit)
+ptable <- as.data.frame(ptable)
+
+betas_estim <- ptable[c(1:18),]
+head(betas_estim)
+
+##A 97.5% : on regarde les betas qui n'ont pas 0 dans leur IC
+beta_signA <- betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` <0 & `97.5%` <0)
+
+beta_signB <-betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` >0 & `97.5%` >0)
+
+betasign <- rbind(beta_signA,beta_signB)
+
+betasign
+
+#récuperer le numeros des betas pour savoir a quelles variables ils correspondent
+betas_nom <- rownames(betasign)
+
+numbers <- as.numeric(gsub("[^[:digit:]]", "", betas_nom))
+
+var_associated <- colnames(x[,numbers])
+
+var_associated
 
 ```
