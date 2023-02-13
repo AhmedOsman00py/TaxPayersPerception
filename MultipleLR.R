@@ -33,15 +33,17 @@ data <- data %>%
 
 dataTaxes <- data %>% select(-statename)
 
+fit1 <- lm(taxpayer_gap ~ gender, data = na.omit(dataTaxes)) # BIC : 6979.592
 
-
-fit <- lm(taxpayer_gap ~ ., data = na.omit(dataTaxes))
+fit <- lm(taxpayer_gap ~ ., data = na.omit(dataTaxes)) # BIC : 5712.947
 stepwise_model <- MASS::stepAIC(fit, direction = "forward")
 
 # library(flexmix)
 best_model <- stepwise_model[which.min(BIC(stepwise_model))]
 
-myModel <- lm(taxpayer_gap ~ gender + percenttp + polinffre, data = T)
+myModel <- lm(taxpayer_gap ~ gender + percenttp + polinffreq, data = na.omit(dataTaxes)) # BIC : 5484.227
+
+ibtiModel <- lm(taxpayer_gap ~ gender + hhinc + partyid + polinffreq, data = na.omit(dataTaxes)) # BIC : 7079.835
 
 library(caret)
 set.seed(123) # set the seed for reproducibility
