@@ -1,0 +1,131 @@
+---
+title: "Fake data"
+author: "ELHANSALI OSSAMA"
+date: "2023-02-12"
+output: html_document
+---
+# Data 
+```{r setup, include=FALSE}
+datatax <- read.csv("dataset.csv", header = T)
+names(datatax)
+```
+
+
+
+```{r}
+datatax <- datatax[c("gender","educ","firstthought_sentiment","taxpayer","percenttp","hhinc","partyid","poleffic","polinffreq","benefit_sentiment")]
+names(datatax)
+```
+```{r}
+summary(datatax)
+```
+```{r}
+table(datatax["gender"])
+```
+```{r}
+sort(unique(datatax$gender))
+```
+
+```{r}
+fake_data <- as.data.frame(array(NA, c(400,10)))
+colnames(fake_data) <- names(datatax)
+head(fake_data)
+```
+
+
+```{r}
+gender_prob <- table(datatax["gender"])/sum(table(datatax["gender"]))
+educ_prob <- table(datatax["educ"])/ sum(table(datatax["educ"]))
+firstthought_prob <- table(datatax["firstthought_sentiment"])/ sum(table(datatax["firstthought_sentiment"]))
+taxpayer_prob <- table(datatax["taxpayer"])/ sum(table(datatax["taxpayer"]))
+hhinc_prob <- table(datatax["hhinc"])/ sum(table(datatax["hhinc"]))
+partyid_prob <- table(datatax["partyid"])/ sum(table(datatax["partyid"]))
+poleffic_prob <- table(datatax["poleffic"])/ sum(table(datatax["poleffic"]))
+polinffreq_prob <- table(datatax["polinffreq"])/ sum(table(datatax["polinffreq"]))
+benifit_prob <- table(datatax["benefit_sentiment"])/ sum(table(datatax["benefit_sentiment"]))
+
+
+```
+
+```{r}
+fake_data[1,"gender"] = sample(sort(unique(datatax$gender)), 1, prob = gender_prob)
+head(fake_data)
+```
+
+
+
+```{r}
+for (i in 1:400){
+  fake_data[i,"gender"] = sample(sort(unique(datatax$gender)), 1, prob = gender_prob)
+  fake_data[i,"educ"] = sample(sort(unique(datatax$educ)),1, prob = educ_prob)
+  fake_data[i,"firstthought_sentiment"] = sample(sort(unique(datatax$firstthought_sentiment)),1, prob = firstthought_prob)
+  fake_data[i,"taxpayer"] = sample(sort(unique(datatax$taxpayer)),1, prob = taxpayer_prob)
+  fake_data[i,"hhinc"] = sample(sort(unique(datatax$hhinc)),1, prob = hhinc_prob)
+  fake_data[i,"partyid"] = sample(sort(unique(datatax$partyid)),1, prob = partyid_prob)
+  fake_data[i,"poleffic"] = sample(sort(unique(datatax$poleffic)),1, prob = poleffic_prob)
+  fake_data[i,"polinffreq"] = sample(sort(unique(datatax$polinffreq)),1, prob = polinffreq_prob)
+  fake_data[i,"benefit_sentiment"] = sample(sort(unique(datatax$benefit_sentiment)),1, prob = benifit_prob)
+}
+
+fake_data$percenttp = runif(400, min = 0, max = 100)
+head(fake_data)
+```
+
+```{r}
+library(fastDummies)
+gender = fake_data$gender
+gender <- dummy_cols(gender, remove_first_dummy = TRUE)
+colnames(gender) <- c(0,"one","two","three")
+gender$one
+```
+
+```{r}
+alpha = 30
+beta <- c(-7,-8,-2)
+```
+
+```{r}
+regression <- function(x,y,z,alpha,beta){
+  return(alpha + beta[1]*x + beta[2]*y + beta[3]*z)
+}
+
+gender$gap <- regression(gender$one , gender$two, gender$three ,alpha,beta)
+gender$gap
+```
+```{r}
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+```
+
+
+```{r}
+stan_model <- "
+data {
+int N;
+int K;
+matrix[N, K] x;
+vector[N] y;
+}
+parameters {
+vector[K] beta;
+real alpha;
+real sigma;
+}
+model {
+y ~ normal(alpha + x * beta, sigma);
+sigma ~ cauchy(0, 2.5);
+beta ~ normal(0, 10);
+alpha ~ normal(0, 10);
+}"
+
+N <- nrow(gender)
+K <- ncol(gender)-1
+```
+
+```{r}
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x=subset(gender, select = -income),y=gender$gap))
+
+```
+
+
