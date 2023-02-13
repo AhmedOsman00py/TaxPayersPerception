@@ -89,8 +89,8 @@ regression <- function(x,y,z,alpha,beta){
   return(alpha + beta[1]*x + beta[2]*y + beta[3]*z)
 }
 
-gender$income <- regression(gender$one , gender$two, gender$three ,alpha,beta)
-gender$income
+gender$gap <- regression(gender$one , gender$two, gender$three ,alpha,beta)
+gender$gap
 ```
 ```{r}
 library(rstan)
@@ -124,7 +124,7 @@ K <- ncol(gender)-1
 ```
 
 ```{r}
-fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x=subset(gender, select = -income),y=gender$income))
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x=subset(gender, select = -income),y=gender$gap))
 
 ```
 
