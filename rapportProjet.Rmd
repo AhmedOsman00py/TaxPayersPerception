@@ -238,7 +238,6 @@ dummies <- model.matrix(~ factor(educ) + factor(gender) + factor(partyid) + fact
 
 x <- dummies[,-1]
 
-
 ```
 
 
@@ -320,10 +319,10 @@ var_associated
 Ainsi, les variables associées à notre variable d'intérêt sont : le sexe, l'affiliation politique, le revenu, le fait de regarder les informations sur un candidat à un poste politique ou des informations sur des questions politiques 
 
 
-## Modèle 3 : four predictors (gender, partyid, hhinc, poleffic)
+## Modèle 3 : four predictors (gender, partyid, hhinc, polinffreq)
 
 
-Pour ce dernier modèle, nous faisons un modèle de régression multiple avec les quatres variables explicatives qui ont été trouvé associées à notre variable d'intérêt dans le modèle 2 :  $\mathtt{gender, hhinc, partyid, poleffic, polinffreq}$.
+Pour ce dernier modèle, nous faisons un modèle de régression multiple avec les quatres variables explicatives qui ont été trouvé associées à notre variable d'intérêt dans le modèle 2 :  $\mathtt{gender, hhinc, partyid, polinffreq}$.
 
 
 ### Implémentation en RStan 
@@ -419,14 +418,11 @@ traceplot(fit3, parametersToPlot)
 
 
 
-# Fake data Check et Performances des modèles
+# Fake data Check
 
 ## Modèle 1
 
-## Modèle 2
-
 ## Modèle 3
-
 
 
 
