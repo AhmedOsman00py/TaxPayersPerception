@@ -74,12 +74,12 @@ Nous avons également rajouter d'autre variables à prendre en compte que nous a
 ## Analyse descriptive
 
 ```{r}
-datatax <- read.csv('dataset.csv', header=T)
+datatax <- read.csv('dataset.csv',header=T)
 ```
 
 Dans un premier temps nous avons crée une nouvelle variable $\mathtt{taxpayer\_gap}$ qui correspond à la différence absolue entre $90\%$ et $\mathtt{percenttp}$ indiquant donc à quelle point une personne a fait une erreur : 0 indique que la personne n'a pas fait d'erreur et a repondu $90\%$ à la question "What percentage of adults in the United States do you think are taxpayers?". Et plus elle est loin de 0 plus elle a une perception erroné du pourcentage des personnes qui paye des taxes au US.
 
-> *N.B le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable `taxpayer` sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)*
+N.B le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable $\mathtt{taxpayer}$ sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)
 
 Ensuite, nous avons du procéder à un traitement d'analyse de sentiments sur les variables textuelles, en utilisant une `nltk` *(Natural Language Toolkit)* bibliothèque `python` déjà entraînée sur un large corpus.   
 On a ainsi créer des nouvelles variables qui ont le même nom de la variable pour laquelle on a effectuer le traitement *(pour les données textuelles)* suivi d'un suffixe **`_sentiment`**    
@@ -91,6 +91,7 @@ Ces variables contiennent un score pour chaque observation qui varie entre $[-1,
 - si la valeur est inférieure à 5% : le sentiment est **négatif** (encodage -> **-1**)
 
 - sinon : le sentiment est **neutre** (encodage -> **0**)
+
 
 
 
@@ -114,7 +115,7 @@ Où $\alpha, \beta_1, \beta_2, ..., \beta_p$ sont les coefficients de régressio
 
 En statistique bayésienne, les modèles de régression linéaires et les modèles de régression linéaires généralisés sont estimés en utilisant une approche bayésienne. Au lieu de maximiser la vraisemblance pour estimer les coefficients de régression, une distribution de probabilité a priori est définie pour chaque coefficient et les données sont utilisées pour mettre à jour ces distributions a priori en utilisant les règles de la théorie bayésienne. Les coefficients de régression sont alors considérés comme des quantités aléatoires avec des distributions a posteriori plutôt que des quantités fixes. Les intervalles de confiance peuvent être facilement obtenus en utilisant les quantiles de la distribution a posteriori. Les algorithmes de simulation de chaîne de Markov Monte Carlo (MCMC) sont utilisés pour explorer la distribution a posteriori et produire des échantillons de la distribution qui peuvent être utilisés pour estimer les paramètres et les incertitudes associées. Les algorithmes MCMC permettent une estimation plus précise des distributions a posteriori et une meilleure prise en compte des incertitudes dans les paramètres estimés par rapport aux méthodes d'estimation classiques.
 
-## Modèle 1 : single predictors  (taxpayer_gap vs gender)
+## Modèle 1 : single predictors  (gender)
 
 Dans un premier temps, nous mettons en place une régression linéaire simple avec un prédicteur unique : le genre. Qui font le plus d'erreur en terme de perception des taxes entre les hommes et les femmes ?
 
@@ -136,7 +137,7 @@ $$
 \alpha \sim  \mathcal{N}(0,10)
 $$
 
-Nous avons choisi des priors Gaussiens pour les intercepts et les coefficients de régression, centrés sur zéro et avec une variance de 10. Cela reflète notre incertitude initiale sur les valeurs des coefficients. En effet nous n'avons aucune information a priori d'où le choix des priors non informative. Les priors Gaussiens sont souvent utilisés pour les coefficients de régression en régression bayésienne car ils sont faciles à spécifier et à interpréter. De plus, pour l'écart-type ($\sigma$) nous avons choisi une distribution de Cauchy avec une moyenne de 0 et une échelle de 2.5.L'utilisation d'un prior de Cauchy pour l'écart-typeest courante dans les modèles bayésiens car cela peut aider à éviter les estimations négatives de l'écart-type. Dans un modèle de régression, l'écart-type représente l'incertitude dans les prévisions et doit donc être positif. Le prior de Cauchy est une distribution de probabilité à queue longue, ce qui signifie qu'elle a une grande probabilité d'obtenir des valeurs extrêmement éloignées de sa moyenne. Cela peut aider à capturer des valeurs aberrantes ou des valeurs hors échantillon qui peuvent affecter la qualité des prévisions.
+Nous avons choisi des priors Gaussiens pour les intercepts et les coefficients de régression, centrés sur zéro et avec une variance de 10. Cela reflète notre incertitude initiale sur les valeurs des coefficients. En effet nous n'avons aucune information a priori d'où le choix des priors non informative. Les priors Gaussiens sont souvent utilisés pour les coefficients de régression en régression bayésienne car ils sont faciles à spécifier et à interpréter. De plus, pour l'écart-type ($\sigma$) nous avons choisi une distribution de Cauchy avec une moyenne de 0 et une échelle de 2.5. L'utilisation d'un prior de Cauchy pour l'écart-typeest courante dans les modèles bayésiens car cela peut aider à éviter les estimations négatives de l'écart-type. Dans un modèle de régression, l'écart-type représente l'incertitude dans les prévisions et doit donc être positif. Le prior de Cauchy est une distribution de probabilité à queue longue, ce qui signifie qu'elle a une grande probabilité d'obtenir des valeurs extrêmement éloignées de sa moyenne. Cela peut aider à capturer des valeurs aberrantes ou des valeurs hors échantillon qui peuvent affecter la qualité des prévisions.
 
 (mettre les sources)
 
@@ -198,7 +199,8 @@ ptable <- parameterTable(fit1)
 ptable <- as.data.frame(ptable)
 
 ptable %>%
-  select(c(1,4,8)) 
+  select(c(1,4,8)) %>%
+  round(1)
 
 plot(fit1,pars=c("beta"))
 
@@ -212,6 +214,169 @@ Ainsi, les femmes font moins d'erreur que les hommes concernant la perception de
 
 ## Modèle 2 : multiple predictors
 
+Ensuite, nous mettons en place un modèle de régression multiple avec plusieurs prédicteurs : $\mathtt{gender, educ, firstthought\_sentiment, taxpayer, hhinc, partyid, poleffic, polinffreq, benefit\_sentiment}$. Afin de savoir quelles variables a un impact sur notre variable d'intérêt $\mathtt{taxpayer\_gap}$ : autremment dit qui font le plus d'erreur en terme de perception du pourcentage de personne qui payent des taxes au US ?
+
+Toutes nos variables explicatives sont catégorielles, on procède donc de la même manière que le modèle 1 et on utilise $\textit{one-hot encoding}$ pour représenter chaque niveau du prédicteur catégorique.
+
+Pour l'implémentation sur RStan, on utilise le même modèle que le modèle 1 avec le même choix des priors.
+
+
+### Implémentation en RStan 
+
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v3 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes des prédictors
+datatax_v3 <- datatax_v3 %>% filter(!is.na(gender),!is.na(educ),!is.na(taxpayer),
+              !is.na(firstthought_sentiment),!is.na(partyid),!is.na(poleffic),!is.na(polinffreq),!is.na(benefit_sentiment),!is.na(hhinc))
+
+# Encoder les variables catégorielles en variables dummies
+dummies <- model.matrix(~ factor(educ) + factor(gender) + factor(partyid) + factor(taxpayer) + factor(firstthought_sentiment) + factor(poleffic) + factor(polinffreq) + factor(benefit_sentiment) +factor(hhinc) , data = datatax_v3)
+
+x <- dummies[,-1]
+
+
+```
+
+
+```{r echo=TRUE}
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10);
+  alpha ~ normal(0, 10);
+  
+}
+"
+
+N <- nrow(datatax_v3)
+K <- ncol(x)
+
+fit2 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v3$taxpayer_gap),refresh=0)
+```
+
+\textbf{Estimation des paramètres}
+
+```{r}
+#estimation des parametres
+ptable <- parameterTable(fit2)
+ptable <- as.data.frame(ptable)
+
+head(ptable) %>%
+  select(c(1,4,8)) %>%
+  round(1)
+
+plot(fit2,pars=c("beta"))
+
+```
+
+On affiche les variables significatives, c'est-à-dire les betas significativement différents de 0 (i.e les betas qui n'ont pas 0 dans leur IC à $95\%$)
+
+```{r}
+betas_estim <- ptable[c(1:45),]
+
+##A 97.5% : on regarde les betas qui n'ont pas 0 dans leur IC
+beta_signA <- betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` <0 & `97.5%` <0)
+
+beta_signB <-betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` >0 & `97.5%` >0)
+
+betasign <- rbind(beta_signA,beta_signB)
+
+
+#récuperer le numeros des betas pour savoir a quelles variables ils correspondent
+betas_nom <- rownames(betasign)
+
+numbers <- as.numeric(gsub("[^[:digit:]]", "", betas_nom))
+
+var_associated <- colnames(x[,numbers])
+
+var_associated
+
+```
+
+
+Ainsi, les variables associées à notre variable d'intérêt sont : le sexe, l'affiliation politique, le revenu, le fait de regarder les informations sur un candidat à un poste politique ou des informations sur des questions politiques 
+
+
+## Modèle 3 : four predictors (gender, partyid, hhinc, poleffic)
+
+
+Pour ce dernier modèle, nous faisons un modèle de régression multiple avec les quatres variables explicatives qui ont été trouvé associées à notre variable d'intérêt dans le modèle 2 :  $\mathtt{gender, hhinc, partyid, poleffic, polinffreq}$.
+
+
+### Implémentation en RStan 
+
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v4 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes des prédictors
+datatax_v4 <- datatax_v4 %>% filter(!is.na(gender),!is.na(partyid),!is.na(polinffreq),!is.na(hhinc))
+
+# Encoder les variables catégorielles en variables dummies
+dummies <- model.matrix(~ factor(gender) + factor(partyid) +  factor(polinffreq) +  factor(hhinc) , data = datatax_v4)
+
+x <- dummies[,-1]
+
+
+```
+
+
+```{r echo=TRUE}
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10);
+  alpha ~ normal(0, 10);
+  
+}
+"
+
+N <- nrow(datatax_v4)
+K <- ncol(x)
+
+fit3 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v4$taxpayer_gap),refresh=0)
+```
+
 
 
 
@@ -221,19 +386,38 @@ Il est important de vérifier la convergence des MCMC. La théorie garantit que 
 
 $\textbf{Trace and density plot :}$
 
- Une chaîne de Markov est une séquence de nombres, dont chacun dépend de celui qui le précède. La toute première valeur est un tirage aléatoire de la distribution a priori, sauf si nous fournissons des valeurs initiales spécifiques. Ensuite, la chaîne se déplace vers la distribution a posteriori, pour finalement converger vers la distribution cible. Nous ne connaissons pas cette distribution cible, mais une façon courante d'évaluer la convergence est d'exécuter plusieurs chaînes. Si toutes les chaînes sont proches de la distribution cible, elles devraient être proches les unes des autres. Cependant, l'inverse n'est pas vrai : elles peuvent être proches les unes des autres mais éloignées de la cible. La vérification des courbes de trace et de densité - avec des courbes de densité distinctes pour chaque chaîne - est une partie essentielle de la vérification des résultats. En effet, le graphique de trace montre les valeurs échantillonnées par chaîne et par nœud tout au long des itérations et le graphique de densité montre la densité empirique par chaîne et par nœud, ou en combinant les chaînes [mettre source].
+Une chaîne de Markov est une séquence de nombres, dont chacun dépend de celui qui le précède. La toute première valeur est un tirage aléatoire de la distribution a priori, sauf si nous fournissons des valeurs initiales spécifiques. Ensuite, la chaîne se déplace vers la distribution a posteriori, pour finalement converger vers la distribution cible. Nous ne connaissons pas cette distribution cible, mais une façon courante d'évaluer la convergence est d'exécuter plusieurs chaînes. Si toutes les chaînes sont proches de la distribution cible, elles devraient être proches les unes des autres. Cependant, l'inverse n'est pas vrai : elles peuvent être proches les unes des autres mais éloignées de la cible. La vérification des courbes de trace et de densité - avec des courbes de densité distinctes pour chaque chaîne - est une partie essentielle de la vérification des résultats. En effet, le graphique de trace montre les valeurs échantillonnées par chaîne et par nœud tout au long des itérations et le graphique de densité montre la densité empirique par chaîne et par nœud, ou en combinant les chaînes [mettre source].
 
 ## Modèle 1
 
 ```{r,message=FALSE}
 parametersToPlot <- c("alpha","beta")
 traceplot(fit1, parametersToPlot)
-mcmcDensity(fit1, parametersToPlot)
+mcmcDensity(fit1, parametersToPlot,byChain = T)
 ```
 
-Le modèle 1 converge bien.
 
 ## Modèle 2
+
+```{r,message=FALSE}
+parametersToPlot <- c("alpha","beta")
+traceplot(fit2, parametersToPlot)
+```
+
+
+
+## Modèle 3
+
+```{r,message=FALSE}
+parametersToPlot <- c("alpha","beta")
+traceplot(fit3, parametersToPlot)
+```
+
+
+
+\textbf{CCL :} D'après les traces plot, tous nos modèles convergent bien.
+
+
 
 # Fake data Check et Performances des modèles
 
@@ -241,5 +425,16 @@ Le modèle 1 converge bien.
 
 ## Modèle 2
 
+## Modèle 3
+
+
+
+
+# Comparaison des modèles
+
+
 
 # Conclusion
+
+
+# Références
