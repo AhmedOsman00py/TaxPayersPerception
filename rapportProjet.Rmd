@@ -79,7 +79,7 @@ datatax <- read.csv('dataset.csv',header=T)
 
 Dans un premier temps nous avons crée une nouvelle variable $\mathtt{taxpayer\_gap}$ qui correspond à la différence absolue entre $90\%$ et $\mathtt{percenttp}$ indiquant donc à quelle point une personne a fait une erreur : 0 indique que la personne n'a pas fait d'erreur et a repondu $90\%$ à la question "What percentage of adults in the United States do you think are taxpayers?". Et plus elle est loin de 0 plus elle a une perception erroné du pourcentage des personnes qui paye des taxes au US.
 
-N.B le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable $\mathtt{taxpayer}$ sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)
+**N.B** le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable $\mathtt{taxpayer}$ sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)
 
 Ensuite, nous avons du procéder à un traitement d'analyse de sentiments sur les variables textuelles, en utilisant une `nltk` *(Natural Language Toolkit)* bibliothèque `python` déjà entraînée sur un large corpus.   
 On a ainsi créer des nouvelles variables qui ont le même nom de la variable pour laquelle on a effectuer le traitement *(pour les données textuelles)* suivi d'un suffixe **`_sentiment`**    
@@ -195,10 +195,10 @@ fit1 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datat
 
 ```{r}
 #estimation des parametres
-ptable <- parameterTable(fit1)
-ptable <- as.data.frame(ptable)
+ptable1 <- parameterTable(fit1)
+ptable1 <- as.data.frame(ptable1)
 
-ptable %>%
+ptable1 %>%
   select(c(1,4,8)) %>%
   round(1)
 
@@ -276,21 +276,21 @@ fit2 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datat
 
 ```{r}
 #estimation des parametres
-ptable <- parameterTable(fit2)
-ptable <- as.data.frame(ptable)
+ptable2 <- parameterTable(fit2)
+ptable2 <- as.data.frame(ptable2)
 
-head(ptable) %>%
+head(ptable2) %>%
   select(c(1,4,8)) %>%
   round(1)
 
-plot(fit2,pars=c("beta"))
+plot(fit2,pars=c("beta"),cex.axis=0.6)
 
 ```
 
 On affiche les variables significatives, c'est-à-dire les betas significativement différents de 0 (i.e les betas qui n'ont pas 0 dans leur IC à $95\%$)
 
 ```{r}
-betas_estim <- ptable[c(1:45),]
+betas_estim <- ptable2[c(1:45),]
 
 ##A 97.5% : on regarde les betas qui n'ont pas 0 dans leur IC
 beta_signA <- betas_estim %>%
@@ -376,6 +376,20 @@ K <- ncol(x)
 fit3 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v4$taxpayer_gap),refresh=0)
 ```
 
+\textbf{Estimation des paramètres}
+
+```{r}
+#estimation des parametres
+ptable3 <- parameterTable(fit3)
+ptable3 <- as.data.frame(ptable3)
+
+head(ptable3) %>%
+  select(c(1,4,8)) %>%
+  round(1)
+
+
+```
+
 
 
 
@@ -428,9 +442,75 @@ traceplot(fit3, parametersToPlot)
 
 # Comparaison des modèles
 
+Le critère BIC (Bayesian Information Criterion) est un outil couramment utilisé pour comparer des modèles de régression linéaire multiple. Il mesure la qualité d'ajustement d'un modèle par rapport à ses données en prenant en compte le nombre de paramètres du modèle et le nombre d'observations.
+
+Le BIC est défini comme étant la log-vraisemblance négative du modèle, pondérée par un facteur de pénalité dépendant du nombre de paramètres. Plus précisément, le BIC est donné par :
+
+
+$$
+\text{BIC} =  -2 \times \text{log}(y|\hat{\theta}) + k \times log(n)
+$$
+où $k$ est le nombre de paramètres du modèle et $n$ est le nombre d'observations. Le facteur de pénalité $log(n)$ est utilisé pour prendre en compte le nombre de paramètres par rapport à la taille de l'échantillon.
+
+Le modèle avec le plus petit BIC est considéré comme étant le meilleur modèle, car il offre un bon ajustement à ses données tout en ayant le moins de paramètres possible. Les autres critères tels que l'AIC (Akaike Information Criterion) ou le DIC (Deviance Information Criterion) fonctionnent de manière similaire, mais avec des formules différentes pour le facteur de pénalité.
+
+```{r}
+###Modèle 1
+
+# Extract the number of observations
+n <- nrow(datatax_v2)
+
+# Extract the number of parameters
+k <- length(ptable1) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable1["lp__","mean"]
+
+BIC1 <- -2*lp__ + k*log(n)
+
+
+###Modèle 2
+
+# Extract the number of observations
+n <- nrow(datatax_v3)
+
+# Extract the number of parameters
+k <- length(ptable2) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable2["lp__","mean"]
+
+BIC2 <- -2*lp__ + k*log(n)
+
+
+###Modèle 3
+
+# Extract the number of observations
+n <- nrow(datatax_v4)
+
+# Extract the number of parameters
+k <- length(ptable3) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable3["lp__","mean"]
+
+BIC3 <- -2*lp__ + k*log(n)
+
+
+cat("BIC Modèle 1 :", BIC1, "\n")
+cat("BIC Modèle 2 :", BIC2, "\n")
+cat("BIC Modèle 3 :", BIC3, "\n")
+
+```
+En conclusion, le modèle de régression multiple avec 9 variables explicatives (modèle 2) semble être le meilleur modèle parmi les 3 modèles comparés.  Bien que le modèle avec le plus de paramètres puisse sembler plus complexe, il peut offrir une meilleure explication des données et donc avoir un BIC plus petit que les modèles moins complexes. Cependant, il est important de se rappeler que le BIC n'est qu'un critère parmi d'autres et il peut être utile d'examiner d'autres critères et d'analyser les données de manière plus approfondie pour déterminer le meilleur modèle.
+
+
 
 
 # Conclusion
+
+
+
 
 
 # Références
