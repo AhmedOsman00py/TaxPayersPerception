@@ -434,7 +434,156 @@ traceplot(fit3, parametersToPlot)
 
 # Fake data Check
 
+Dans cette partie on veut tester la performance de notre model sur des données simulées. Pour ce faire on  va générer des données auxquelles on appliquera un modéle de regression avec des paramètres connues, et on essayera de les estimer par le model de regression simple (le même principe s'appliquera pour la regression multiple qu'on fera pas vu sa complexité et le nombre très grands des paramètres ) sur stan .  
+```{r setup, include=FALSE}
+datatax <- read.csv("dataset.csv", header = T)
+names(datatax)
+```
+
+
+Premièrement on grade que les variables qui nous interessent dans notre dataset ("gender","educ","firstthought_sentiment","taxpayer","percenttp","hhinc","partyid","poleffic","polinffreq","benefit_sentiment")
+```{r}
+datatax <- datatax[c("gender","educ","firstthought_sentiment","taxpayer","percenttp","hhinc","partyid","poleffic","polinffreq","benefit_sentiment")]
+```
+
+Notre data set fake_data de taille $500*10$  contient des données simuler selon leurs probabilités fréquentistes pour chaque variable 
+```{r}
+fake_data <- as.data.frame(array(NA, c(500,10)))
+colnames(fake_data) <- names(datatax)
+```
+
+
+```{r}
+#on crée des vecteurs de probabilités pour chaque catégorie de variable
+gender_prob <- table(datatax["gender"])/sum(table(datatax["gender"]))
+educ_prob <- table(datatax["educ"])/ sum(table(datatax["educ"]))
+firstthought_prob <- table(datatax["firstthought_sentiment"])/ sum(table(datatax["firstthought_sentiment"]))
+taxpayer_prob <- table(datatax["taxpayer"])/ sum(table(datatax["taxpayer"]))
+hhinc_prob <- table(datatax["hhinc"])/ sum(table(datatax["hhinc"]))
+partyid_prob <- table(datatax["partyid"])/ sum(table(datatax["partyid"]))
+poleffic_prob <- table(datatax["poleffic"])/ sum(table(datatax["poleffic"]))
+polinffreq_prob <- table(datatax["polinffreq"])/ sum(table(datatax["polinffreq"]))
+benifit_prob <- table(datatax["benefit_sentiment"])/ sum(table(datatax["benefit_sentiment"]))
+
+
+```
+
+
+
+
+
+```{r}
+# on simule chaque donnée selon le vecteur de probabilité associé 
+
+for (i in 1:500){
+  fake_data[i,"gender"] = sample(sort(unique(datatax$gender)), 1, prob = gender_prob)
+  fake_data[i,"educ"] = sample(sort(unique(datatax$educ)),1, prob = educ_prob)
+  fake_data[i,"firstthought_sentiment"] = sample(sort(unique(datatax$firstthought_sentiment)),1, prob = firstthought_prob)
+  fake_data[i,"taxpayer"] = sample(sort(unique(datatax$taxpayer)),1, prob = taxpayer_prob)
+  fake_data[i,"hhinc"] = sample(sort(unique(datatax$hhinc)),1, prob = hhinc_prob)
+  fake_data[i,"partyid"] = sample(sort(unique(datatax$partyid)),1, prob = partyid_prob)
+  fake_data[i,"poleffic"] = sample(sort(unique(datatax$poleffic)),1, prob = poleffic_prob)
+  fake_data[i,"polinffreq"] = sample(sort(unique(datatax$polinffreq)),1, prob = polinffreq_prob)
+  fake_data[i,"benefit_sentiment"] = sample(sort(unique(datatax$benefit_sentiment)),1, prob = benifit_prob)
+}
+#pour la variable percenttp on choisit uniformement entre 0 et 100
+fake_data$percenttp = runif(500, min = 0, max = 100)
+head(fake_data)
+```
+
+
+
 ## Modèle 1
+On choisit notre variable prédectrice "gender" et on applique le model de regression simple avec des paramètres choisis d'après le résultat obtenu par le modèle 1 sur les données réelles 
+```{r}
+library(fastDummies)
+gender = fake_data$gender
+gender <- dummy_cols(gender, remove_first_dummy = TRUE)
+colnames(gender) <- c(0,"gender2","gender3","gender4")
+head(gender)
+
+```
+
+```{r}
+#on fixe notre paramètres 
+alpha = 30
+beta <- c(-7,-8,-2)
+sigma <- 18
+```
+
+```{r}
+regression_norm <- function(x,y,z,alpha,beta,sigma){
+  return(abs(rnorm(1,alpha + beta[1]*x + beta[2]*y + beta[3]*z,sigma)))
+}
+for (i in 1:500){
+ gender$gap[i] <-regression_norm(gender$gender2[i] , gender$gender3[i], gender$gender4[i] ,alpha,beta,sigma)
+}
+head(gender$gap)
+```
+
+
+
+
+```{r}
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+```
+
+```{r}
+x <- gender[c("gender2","gender3","gender4")]
+x
+```
+
+```{r}
+stan_model <- "
+data {
+int N;
+int K;
+matrix[N, K] x;
+vector[N] y;
+}
+parameters {
+vector[K] beta;
+real alpha;
+real sigma;
+}
+model {
+y ~ normal(alpha + x * beta, sigma);
+sigma ~ cauchy(0, 2.5);
+beta ~ normal(0, 10);
+alpha ~ normal(0, 10);
+}"
+
+N <- 500
+K <- 3
+```
+
+```{r}
+source("stanTools.R")
+source("functions.R")
+parametreTable <- function(fit, pars=names(fit)){
+  rstan:::monitor(as.array(fit, pars = pars), warmup =0, print = FALSE)
+}
+```
+
+
+```{r}
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x= x ,y=gender$gap))
+estimated <- parametreTable(fit1)
+estimated
+```
+
+```{r}
+a <- estimated$mean
+b <- c(beta,alpha,sigma,-1645.0789)
+comparaison <- as.data.frame(estimated[,1:1])
+comparaison$real = b
+colnames(comparaison) <- c("estimated", "real")
+comparaison
+```
+
+Comme montré par la comparaison on voit que le modèle donne des estimations proches aux valeurs réelles  du mode, et on remarque que la précision du model dépend de la taille de la dataset , plus la taille est grande plus le modele devient plus en plus précis. Le même principe s'applique pour le model 3 qu'on a pas fait vu son très grand nombre de variables surtout après la transformation en dummy. 
 
 ## Modèle 3
 
@@ -503,6 +652,9 @@ cat("BIC Modèle 3 :", BIC3, "\n")
 
 ```
 En conclusion, le modèle de régression multiple avec 9 variables explicatives (modèle 2) semble être le meilleur modèle parmi les 3 modèles comparés.  Bien que le modèle avec le plus de paramètres puisse sembler plus complexe, il peut offrir une meilleure explication des données et donc avoir un BIC plus petit que les modèles moins complexes. Cependant, il est important de se rappeler que le BIC n'est qu'un critère parmi d'autres et il peut être utile d'examiner d'autres critères et d'analyser les données de manière plus approfondie pour déterminer le meilleur modèle.
+
+
+
 
 
 
