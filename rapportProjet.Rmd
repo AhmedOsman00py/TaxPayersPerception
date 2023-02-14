@@ -1,0 +1,668 @@
+---
+title: "Projet Statistique Bayésienne"
+author: "Ibtissem REBAI Ahmed OSMAN Ossama ELHANSALI Bourahima COULIBALY"
+date: "12/02/2023"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(rstan)
+library(ggplot2)
+library(bayesplot)
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library(foreign)
+source("stanTools.R")
+source("functions.R")
+library(tidyverse)
+library(rstanarm)
+library(tinytex)
+library(kableExtra)
+```
+
+\tableofcontents
+\newpage
+
+
+# Introduction
+
+L'article "Read My Lips: Why Americans are Proud to pay Taxes" de Victoria Williamson, publié par Princeton University Press en 2017, explore la question de pourquoi les Américains sont fiers de payer des impôts. L'auteur examine différentes perspectives culturelles et politiques pour montrer comment les perceptions et les attitudes envers les impôts peuvent varier considérablement d'une société à l'autre. Elle argumente que, malgré les opinions souvent négatives associées à la fiscalité aux États-Unis, il existe une fierté profonde chez certains citoyens américains de contribuer au bien-être de leur pays à travers leurs impôts. L'article offre une analyse approfondie des motivations et des sentiments qui sous-tendent les attitudes envers les impôts aux États-Unis, et montre comment ces attitudes peuvent influencer la politique fiscale et la démocratie en général. 
+
+Dans son article Victoria Williamson utilise une combinaison de sources de données qualitatives et quantitatives, telles que des études de cas, des enquêtes auprès de la population, des analyses de données historiques et des commentaires de spécialistes du domaine, pour étayer son argument en faveur de l'existence d'une fierté américaine pour payer des impôts. Les données qualitatives aident à examiner les perceptions culturelles et les croyances associées à la fiscalité, tandis que les données quantitatives mesurent les opinions et les attitudes envers les impôts en Amérique.
+
+L'objectif de ce projet est de reprendre les données utiliser dans l'article est de faire une analyse bayésienne afin de répondre à la problématique suivante : 
+90 % de la population paie des impôts, mais beaucoup de gens en ont une perception erronée, l'écart entre les contribuables.
+\vspace{-\topsep}
+\begin{itemize}
+  \setlength\itemsep{0pt}
+  \setlength\parskip{0pt}
+  \item Qui fait la plus grosse erreur ?
+  \item Est-ce lié à l'affiliation politique, au revenu, au fait de regarder les nouvelles, les informations, etc. ?
+\end{itemize}
+
+# Les données
+
+Afin de répondre à la problématique nous avons d'abord regardé les données que nous avions a notre disposition :
+\begin{itemize}
+  \setlength\itemsep{0pt}
+  \setlength\parskip{0pt}
+  \item \texttt{gender} What gender do you identify with? Select the oneoption that you most strongly identify with.
+  \item \texttt{educ} What is the highest level of education that you have
+completed? Elementary, middle, or junior high school (1),
+High school (2), etc.
+  \item \texttt{firstthought} When you hear the word "taxes," what comes
+to mind? (Several open-ended questions, need some language processing)
+  \item \texttt{taxpayer} Are you a taxpayer?
+  \item \texttt{percenttp} What percentage of adults in the United States
+do you think are taxpayers?
+\end{itemize}
+
+Nous avons également rajouter d'autre variables à prendre en compte que nous avions juger comme importante pour la réponse à notre problématique :
+\begin{itemize}
+  \setlength\itemsep{0pt}
+  \setlength\parskip{0pt}
+  \item \texttt{hhinc} In which of these groups did your total family income, from all sources, fall last year – 2013 – before taxes, that is.
+  \item \texttt{partyid} Generally speaking, do you usually think of yourself as a Republican, Democrat, Independent, or what?
+  \item \texttt{poleffic} Please indicate whether you agree or disagree with the statement “people like me have much to say about government”.
+  \item \texttt{polinffreq} In the past year, how frequently have you looked for information about a candidate for political office or information about political issues?
+  \item \texttt{benefit} Do you feel you have personally benefited from the tax dollars you have paid? If so, how? (Several open-ended questions, need some language processing)
+\end{itemize}
+
+## Analyse descriptive
+
+```{r}
+datatax <- read.csv('dataset.csv',header=T)
+```
+
+Dans un premier temps nous avons crée une nouvelle variable $\mathtt{taxpayer\_gap}$ qui correspond à la différence absolue entre $90\%$ et $\mathtt{percenttp}$ indiquant donc à quelle point une personne a fait une erreur : 0 indique que la personne n'a pas fait d'erreur et a repondu $90\%$ à la question "What percentage of adults in the United States do you think are taxpayers?". Et plus elle est loin de 0 plus elle a une perception erroné du pourcentage des personnes qui paye des taxes au US.
+
+**N.B** le pourcentage 90% a été obtenu, en comptant le nombre de personnes qui paye des taxes de la variable $\mathtt{taxpayer}$ sur la somme des nombre des personne qui paye et ne paye pas des taxes (on a pas pris en compte les personnes qui ont répondus "on ne sait pas" pour calculer ce pourcentage)
+
+Ensuite, nous avons du procéder à un traitement d'analyse de sentiments sur les variables textuelles, en utilisant une `nltk` *(Natural Language Toolkit)* bibliothèque `python` déjà entraînée sur un large corpus.   
+On a ainsi créer des nouvelles variables qui ont le même nom de la variable pour laquelle on a effectuer le traitement *(pour les données textuelles)* suivi d'un suffixe **`_sentiment`**    
+
+Ces variables contiennent un score pour chaque observation qui varie entre $[-1, 1]$, et on s'est fixé à un seuil **5%** :   
+
+- si la valeur est supérieur à 5% : le sentiment est **positif** (encodage -> **1**)
+
+- si la valeur est inférieure à 5% : le sentiment est **négatif** (encodage -> **-1**)
+
+- sinon : le sentiment est **neutre** (encodage -> **0**)
+
+
+
+
+Enfin, analyse descriptive (IBRAHIM)
+
+
+
+
+# Description de nos modèles
+
+
+## Régression linéaire, régression linéaire généralisé
+
+
+L'objectif est de trouver quelles variables (X) sont associés à notre variable d'intérêt $\mathtt{taxpayer_gap}$ (Y). Pour cela nous allons considérer des modèles linéaires et les modèles de régression linéaires généralisés.
+
+$$
+Y = \alpha + \beta_1X_1 + \beta_2X_2 + ... + \beta_pX_p +\sigma
+$$
+Où $\alpha, \beta_1, \beta_2, ..., \beta_p$ sont les coefficients de régression et $\sigma$ représente l'erreur aléatoire. 
+
+En statistique bayésienne, les modèles de régression linéaires et les modèles de régression linéaires généralisés sont estimés en utilisant une approche bayésienne. Au lieu de maximiser la vraisemblance pour estimer les coefficients de régression, une distribution de probabilité a priori est définie pour chaque coefficient et les données sont utilisées pour mettre à jour ces distributions a priori en utilisant les règles de la théorie bayésienne. Les coefficients de régression sont alors considérés comme des quantités aléatoires avec des distributions a posteriori plutôt que des quantités fixes. Les intervalles de confiance peuvent être facilement obtenus en utilisant les quantiles de la distribution a posteriori. Les algorithmes de simulation de chaîne de Markov Monte Carlo (MCMC) sont utilisés pour explorer la distribution a posteriori et produire des échantillons de la distribution qui peuvent être utilisés pour estimer les paramètres et les incertitudes associées. Les algorithmes MCMC permettent une estimation plus précise des distributions a posteriori et une meilleure prise en compte des incertitudes dans les paramètres estimés par rapport aux méthodes d'estimation classiques.
+
+## Modèle 1 : single predictors  (gender)
+
+Dans un premier temps, nous mettons en place une régression linéaire simple avec un prédicteur unique : le genre. Qui font le plus d'erreur en terme de perception des taxes entre les hommes et les femmes ?
+
+Cependant, la variable $\mathtt{gender}$ est une variable catégorielle 4 valeurs (Male '1', Female '2', Other '3', No answer '4'). Lorsque la variable prédictive X est une variable catégorielle (ou facteur), il est courant d'utiliser un modèle linéaire généralisé (GLM) pour modéliser la relation entre la réponse et les prédicteurs catégoriels. Une façon courante de le faire est d'utiliser un $\textit{one-hot encoding}$ pour représenter chaque niveau du prédicteur catégorique. Cela implique de créer un nouveau prédicteur binaire pour chaque niveau du prédicteur catégorique, avec une valeur de 1 indiquant que l'observation appartient à ce niveau et une valeur de 0 indiquant qu'elle n'y appartient pas. Lorsqu'on utilise $\textit{one-hot encoding}$ pour représenter une variable catégorielle, une catégorie de référence est généralement choisie en laissant de côté un des facteurs dans le modèle.La catégorie de référence sert de comparaison pour les autres catégories et permet d'interpréter les coefficients de la régression. Voici le modèle à implémenter dans Stan :
+
+$$
+Y \sim \mathcal{N}(\alpha+\beta_1 * \texttt{gender==2} +\beta_2 * \texttt{gender==3}  + \beta_3 * \texttt{gender==4},\sigma) 
+$$
+
+Concernant le choix des priors :
+
+$$
+\sigma \sim \text{Cauchy}(0,2.5)
+$$
+$$
+\beta \sim  \mathcal{N}(0,10)
+$$
+$$
+\alpha \sim  \mathcal{N}(0,10)
+$$
+
+Nous avons choisi des priors Gaussiens pour les intercepts et les coefficients de régression, centrés sur zéro et avec une variance de 10. Cela reflète notre incertitude initiale sur les valeurs des coefficients. En effet nous n'avons aucune information a priori d'où le choix des priors non informative. Les priors Gaussiens sont souvent utilisés pour les coefficients de régression en régression bayésienne car ils sont faciles à spécifier et à interpréter. De plus, pour l'écart-type ($\sigma$) nous avons choisi une distribution de Cauchy avec une moyenne de 0 et une échelle de 2.5. L'utilisation d'un prior de Cauchy pour l'écart-typeest courante dans les modèles bayésiens car cela peut aider à éviter les estimations négatives de l'écart-type. Dans un modèle de régression, l'écart-type représente l'incertitude dans les prévisions et doit donc être positif. Le prior de Cauchy est une distribution de probabilité à queue longue, ce qui signifie qu'elle a une grande probabilité d'obtenir des valeurs extrêmement éloignées de sa moyenne. Cela peut aider à capturer des valeurs aberrantes ou des valeurs hors échantillon qui peuvent affecter la qualité des prévisions.
+
+(mettre les sources)
+
+
+
+### Implémentation en RStan 
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v2 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#on transforme en facteur notre variable predictor
+datatax_v2$gender <- as.factor(datatax_v2$gender)
+
+x <- model.matrix(~ gender, data = datatax_v2)
+
+#on enleve intercept
+x <- x[,-1]
+
+```
+
+
+```{r echo=TRUE}
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10);
+  alpha ~ normal(0, 10);
+  
+}
+"
+
+N <- nrow(datatax_v2)
+K <- ncol(x)
+
+fit1 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v2$taxpayer_gap),refresh=0)
+```
+
+\textbf{Estimation des paramètres}
+
+```{r}
+#estimation des parametres
+ptable1 <- parameterTable(fit1)
+ptable1 <- as.data.frame(ptable1)
+
+ptable1 %>%
+  select(c(1,4,8)) %>%
+  round(1)
+
+plot(fit1,pars=c("beta"))
+
+```
+
+
+On constaste $\beta_1 = -5.7$ est significativement différent de 0 car l'intervalle de crédibilité à $95\%$ ne contient pas 0.
+Ainsi, les femmes font moins d'erreur que les hommes concernant la perception des taxes.     
+
+
+
+## Modèle 2 : multiple predictors
+
+Ensuite, nous mettons en place un modèle de régression multiple avec plusieurs prédicteurs : $\mathtt{gender, educ, firstthought\_sentiment, taxpayer, hhinc, partyid, poleffic, polinffreq, benefit\_sentiment}$. Afin de savoir quelles variables a un impact sur notre variable d'intérêt $\mathtt{taxpayer\_gap}$ : autremment dit qui font le plus d'erreur en terme de perception du pourcentage de personne qui payent des taxes au US ?
+
+Toutes nos variables explicatives sont catégorielles, on procède donc de la même manière que le modèle 1 et on utilise $\textit{one-hot encoding}$ pour représenter chaque niveau du prédicteur catégorique.
+
+Pour l'implémentation sur RStan, on utilise le même modèle que le modèle 1 avec le même choix des priors.
+
+
+### Implémentation en RStan 
+
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v3 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes des prédictors
+datatax_v3 <- datatax_v3 %>% filter(!is.na(gender),!is.na(educ),!is.na(taxpayer),
+              !is.na(firstthought_sentiment),!is.na(partyid),!is.na(poleffic),!is.na(polinffreq),!is.na(benefit_sentiment),!is.na(hhinc))
+
+# Encoder les variables catégorielles en variables dummies
+dummies <- model.matrix(~ factor(educ) + factor(gender) + factor(partyid) + factor(taxpayer) + factor(firstthought_sentiment) + factor(poleffic) + factor(polinffreq) + factor(benefit_sentiment) +factor(hhinc) , data = datatax_v3)
+
+x <- dummies[,-1]
+
+```
+
+
+```{r echo=TRUE}
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10);
+  alpha ~ normal(0, 10);
+  
+}
+"
+
+N <- nrow(datatax_v3)
+K <- ncol(x)
+
+fit2 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v3$taxpayer_gap),refresh=0)
+```
+
+\textbf{Estimation des paramètres}
+
+```{r}
+#estimation des parametres
+ptable2 <- parameterTable(fit2)
+ptable2 <- as.data.frame(ptable2)
+
+head(ptable2) %>%
+  select(c(1,4,8)) %>%
+  round(1)
+
+plot(fit2,pars=c("beta"),cex.axis=0.6)
+
+```
+
+On affiche les variables significatives, c'est-à-dire les betas significativement différents de 0 (i.e les betas qui n'ont pas 0 dans leur IC à $95\%$)
+
+```{r}
+betas_estim <- ptable2[c(1:45),]
+
+##A 97.5% : on regarde les betas qui n'ont pas 0 dans leur IC
+beta_signA <- betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` <0 & `97.5%` <0)
+
+beta_signB <-betas_estim %>%
+  dplyr::select(1,4,8) %>%
+  filter (`2.5%` >0 & `97.5%` >0)
+
+betasign <- rbind(beta_signA,beta_signB)
+
+
+#récuperer le numeros des betas pour savoir a quelles variables ils correspondent
+betas_nom <- rownames(betasign)
+
+numbers <- as.numeric(gsub("[^[:digit:]]", "", betas_nom))
+
+var_associated <- colnames(x[,numbers])
+
+var_associated
+
+```
+
+
+Ainsi, les variables associées à notre variable d'intérêt sont : le sexe, l'affiliation politique, le revenu, le fait de regarder les informations sur un candidat à un poste politique ou des informations sur des questions politiques 
+
+
+## Modèle 3 : four predictors (gender, partyid, hhinc, polinffreq)
+
+
+Pour ce dernier modèle, nous faisons un modèle de régression multiple avec les quatres variables explicatives qui ont été trouvé associées à notre variable d'intérêt dans le modèle 2 :  $\mathtt{gender, hhinc, partyid, polinffreq}$.
+
+
+### Implémentation en RStan 
+
+
+
+```{r}
+#enlever les valeurs manquantes de notre variable d'intérêt
+datatax_v4 <- datatax %>% filter(!is.na(taxpayer_gap))
+
+#enlever les valeurs manquantes des prédictors
+datatax_v4 <- datatax_v4 %>% filter(!is.na(gender),!is.na(partyid),!is.na(polinffreq),!is.na(hhinc))
+
+# Encoder les variables catégorielles en variables dummies
+dummies <- model.matrix(~ factor(gender) + factor(partyid) +  factor(polinffreq) +  factor(hhinc) , data = datatax_v4)
+
+x <- dummies[,-1]
+
+
+```
+
+
+```{r echo=TRUE}
+stan_model <- "
+data {
+  int N;
+  int K;
+  matrix[N, K] x;
+  vector[N] y;
+}
+
+parameters {
+  vector[K] beta;
+  real alpha;
+  real sigma;
+}
+
+model {
+  y ~ normal(alpha + x * beta, sigma);
+
+  sigma ~ cauchy(0, 2.5); 
+  beta ~ normal(0, 10);
+  alpha ~ normal(0, 10);
+  
+}
+"
+
+N <- nrow(datatax_v4)
+K <- ncol(x)
+
+fit3 <- stan(model_code = stan_model, data = list(N = N, K = K, x = x, y = datatax_v4$taxpayer_gap),refresh=0)
+```
+
+\textbf{Estimation des paramètres}
+
+```{r}
+#estimation des parametres
+ptable3 <- parameterTable(fit3)
+ptable3 <- as.data.frame(ptable3)
+
+head(ptable3) %>%
+  select(c(1,4,8)) %>%
+  round(1)
+
+
+```
+
+
+
+
+# Evaluation de la convergence 
+
+Il est important de vérifier la convergence des MCMC. La théorie garantit que la sortie d'une exécution MCMC convergera finalement vers la distribution a posteriori correcte, mais ce n'est pas toujours le cas. Les distributions a posteriori sont décrites dans les sorties de Stan par un grand nombre de tirages aléatoires de la distribution a posteriori pour chaque paramètre du modèle. Plusieurs éléments doivent être vérifiés, comme le biais, c'est-à-dire que les tirages sont représentatifs de l'ensemble de la distribution postérieure, et la précision, c'est-à-dire que nous avons suffisamment de tirages pour obtenir des estimations suffisamment précises. 
+
+$\textbf{Trace and density plot :}$
+
+Une chaîne de Markov est une séquence de nombres, dont chacun dépend de celui qui le précède. La toute première valeur est un tirage aléatoire de la distribution a priori, sauf si nous fournissons des valeurs initiales spécifiques. Ensuite, la chaîne se déplace vers la distribution a posteriori, pour finalement converger vers la distribution cible. Nous ne connaissons pas cette distribution cible, mais une façon courante d'évaluer la convergence est d'exécuter plusieurs chaînes. Si toutes les chaînes sont proches de la distribution cible, elles devraient être proches les unes des autres. Cependant, l'inverse n'est pas vrai : elles peuvent être proches les unes des autres mais éloignées de la cible. La vérification des courbes de trace et de densité - avec des courbes de densité distinctes pour chaque chaîne - est une partie essentielle de la vérification des résultats. En effet, le graphique de trace montre les valeurs échantillonnées par chaîne et par nœud tout au long des itérations et le graphique de densité montre la densité empirique par chaîne et par nœud, ou en combinant les chaînes [mettre source].
+
+## Modèle 1
+
+```{r,message=FALSE}
+parametersToPlot <- c("alpha","beta")
+traceplot(fit1, parametersToPlot)
+mcmcDensity(fit1, parametersToPlot,byChain = T)
+```
+
+
+## Modèle 2
+
+```{r,message=FALSE}
+parametersToPlot <- c("alpha","beta")
+traceplot(fit2, parametersToPlot)
+```
+
+
+
+## Modèle 3
+
+```{r,message=FALSE}
+parametersToPlot <- c("alpha","beta")
+traceplot(fit3, parametersToPlot)
+```
+
+
+
+\textbf{CCL :} D'après les traces plot, tous nos modèles convergent bien.
+
+
+
+# Fake data Check
+
+Dans cette partie on veut tester la performance de notre model sur des données simulées. Pour ce faire on  va générer des données auxquelles on appliquera un modéle de regression avec des paramètres connues, et on essayera de les estimer par le model de regression simple (le même principe s'appliquera pour la regression multiple qu'on fera pas vu sa complexité et le nombre très grands des paramètres ) sur stan .  
+```{r setup, include=FALSE}
+datatax <- read.csv("dataset.csv", header = T)
+names(datatax)
+```
+
+
+Premièrement on grade que les variables qui nous interessent dans notre dataset ("gender","educ","firstthought_sentiment","taxpayer","percenttp","hhinc","partyid","poleffic","polinffreq","benefit_sentiment")
+```{r}
+datatax <- datatax[c("gender","educ","firstthought_sentiment","taxpayer","percenttp","hhinc","partyid","poleffic","polinffreq","benefit_sentiment")]
+```
+
+Notre data set fake_data de taille $500*10$  contient des données simuler selon leurs probabilités fréquentistes pour chaque variable 
+```{r}
+fake_data <- as.data.frame(array(NA, c(500,10)))
+colnames(fake_data) <- names(datatax)
+```
+
+
+```{r}
+#on crée des vecteurs de probabilités pour chaque catégorie de variable
+gender_prob <- table(datatax["gender"])/sum(table(datatax["gender"]))
+educ_prob <- table(datatax["educ"])/ sum(table(datatax["educ"]))
+firstthought_prob <- table(datatax["firstthought_sentiment"])/ sum(table(datatax["firstthought_sentiment"]))
+taxpayer_prob <- table(datatax["taxpayer"])/ sum(table(datatax["taxpayer"]))
+hhinc_prob <- table(datatax["hhinc"])/ sum(table(datatax["hhinc"]))
+partyid_prob <- table(datatax["partyid"])/ sum(table(datatax["partyid"]))
+poleffic_prob <- table(datatax["poleffic"])/ sum(table(datatax["poleffic"]))
+polinffreq_prob <- table(datatax["polinffreq"])/ sum(table(datatax["polinffreq"]))
+benifit_prob <- table(datatax["benefit_sentiment"])/ sum(table(datatax["benefit_sentiment"]))
+
+
+```
+
+
+
+
+
+```{r}
+# on simule chaque donnée selon le vecteur de probabilité associé 
+
+for (i in 1:500){
+  fake_data[i,"gender"] = sample(sort(unique(datatax$gender)), 1, prob = gender_prob)
+  fake_data[i,"educ"] = sample(sort(unique(datatax$educ)),1, prob = educ_prob)
+  fake_data[i,"firstthought_sentiment"] = sample(sort(unique(datatax$firstthought_sentiment)),1, prob = firstthought_prob)
+  fake_data[i,"taxpayer"] = sample(sort(unique(datatax$taxpayer)),1, prob = taxpayer_prob)
+  fake_data[i,"hhinc"] = sample(sort(unique(datatax$hhinc)),1, prob = hhinc_prob)
+  fake_data[i,"partyid"] = sample(sort(unique(datatax$partyid)),1, prob = partyid_prob)
+  fake_data[i,"poleffic"] = sample(sort(unique(datatax$poleffic)),1, prob = poleffic_prob)
+  fake_data[i,"polinffreq"] = sample(sort(unique(datatax$polinffreq)),1, prob = polinffreq_prob)
+  fake_data[i,"benefit_sentiment"] = sample(sort(unique(datatax$benefit_sentiment)),1, prob = benifit_prob)
+}
+#pour la variable percenttp on choisit uniformement entre 0 et 100
+fake_data$percenttp = runif(500, min = 0, max = 100)
+head(fake_data)
+```
+
+
+
+## Modèle 1
+On choisit notre variable prédectrice "gender" et on applique le model de regression simple avec des paramètres choisis d'après le résultat obtenu par le modèle 1 sur les données réelles 
+```{r}
+library(fastDummies)
+gender = fake_data$gender
+gender <- dummy_cols(gender, remove_first_dummy = TRUE)
+colnames(gender) <- c(0,"gender2","gender3","gender4")
+head(gender)
+
+```
+
+```{r}
+#on fixe notre paramètres 
+alpha = 30
+beta <- c(-7,-8,-2)
+sigma <- 18
+```
+
+```{r}
+regression_norm <- function(x,y,z,alpha,beta,sigma){
+  return(abs(rnorm(1,alpha + beta[1]*x + beta[2]*y + beta[3]*z,sigma)))
+}
+for (i in 1:500){
+ gender$gap[i] <-regression_norm(gender$gender2[i] , gender$gender3[i], gender$gender4[i] ,alpha,beta,sigma)
+}
+head(gender$gap)
+```
+
+
+
+
+```{r}
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+```
+
+```{r}
+x <- gender[c("gender2","gender3","gender4")]
+x
+```
+
+```{r}
+stan_model <- "
+data {
+int N;
+int K;
+matrix[N, K] x;
+vector[N] y;
+}
+parameters {
+vector[K] beta;
+real alpha;
+real sigma;
+}
+model {
+y ~ normal(alpha + x * beta, sigma);
+sigma ~ cauchy(0, 2.5);
+beta ~ normal(0, 10);
+alpha ~ normal(0, 10);
+}"
+
+N <- 500
+K <- 3
+```
+
+```{r}
+source("stanTools.R")
+source("functions.R")
+parametreTable <- function(fit, pars=names(fit)){
+  rstan:::monitor(as.array(fit, pars = pars), warmup =0, print = FALSE)
+}
+```
+
+
+```{r}
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x= x ,y=gender$gap))
+estimated <- parametreTable(fit1)
+estimated
+```
+
+```{r}
+a <- estimated$mean
+b <- c(beta,alpha,sigma,-1645.0789)
+comparaison <- as.data.frame(estimated[,1:1])
+comparaison$real = b
+colnames(comparaison) <- c("estimated", "real")
+comparaison
+```
+
+Comme montré par la comparaison on voit que le modèle donne des estimations proches aux valeurs réelles  du mode, et on remarque que la précision du model dépend de la taille de la dataset , plus la taille est grande plus le modele devient plus en plus précis. Le même principe s'applique pour le model 3 qu'on a pas fait vu son très grand nombre de variables surtout après la transformation en dummy. 
+
+## Modèle 3
+
+
+
+# Comparaison des modèles
+
+Le critère BIC (Bayesian Information Criterion) est un outil couramment utilisé pour comparer des modèles de régression linéaire multiple. Il mesure la qualité d'ajustement d'un modèle par rapport à ses données en prenant en compte le nombre de paramètres du modèle et le nombre d'observations.
+
+Le BIC est défini comme étant la log-vraisemblance négative du modèle, pondérée par un facteur de pénalité dépendant du nombre de paramètres. Plus précisément, le BIC est donné par :
+
+
+$$
+\text{BIC} =  -2 \times \text{log}(y|\hat{\theta}) + k \times log(n)
+$$
+où $k$ est le nombre de paramètres du modèle et $n$ est le nombre d'observations. Le facteur de pénalité $log(n)$ est utilisé pour prendre en compte le nombre de paramètres par rapport à la taille de l'échantillon.
+
+Le modèle avec le plus petit BIC est considéré comme étant le meilleur modèle, car il offre un bon ajustement à ses données tout en ayant le moins de paramètres possible. Les autres critères tels que l'AIC (Akaike Information Criterion) ou le DIC (Deviance Information Criterion) fonctionnent de manière similaire, mais avec des formules différentes pour le facteur de pénalité.
+
+```{r}
+###Modèle 1
+
+# Extract the number of observations
+n <- nrow(datatax_v2)
+
+# Extract the number of parameters
+k <- length(ptable1) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable1["lp__","mean"]
+
+BIC1 <- -2*lp__ + k*log(n)
+
+
+###Modèle 2
+
+# Extract the number of observations
+n <- nrow(datatax_v3)
+
+# Extract the number of parameters
+k <- length(ptable2) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable2["lp__","mean"]
+
+BIC2 <- -2*lp__ + k*log(n)
+
+
+###Modèle 3
+
+# Extract the number of observations
+n <- nrow(datatax_v4)
+
+# Extract the number of parameters
+k <- length(ptable3) - 1
+
+# Extract the log-posterior from the stanfit object
+lp__ <- ptable3["lp__","mean"]
+
+BIC3 <- -2*lp__ + k*log(n)
+
+
+cat("BIC Modèle 1 :", BIC1, "\n")
+cat("BIC Modèle 2 :", BIC2, "\n")
+cat("BIC Modèle 3 :", BIC3, "\n")
+
+```
+En conclusion, le modèle de régression multiple avec 9 variables explicatives (modèle 2) semble être le meilleur modèle parmi les 3 modèles comparés.  Bien que le modèle avec le plus de paramètres puisse sembler plus complexe, il peut offrir une meilleure explication des données et donc avoir un BIC plus petit que les modèles moins complexes. Cependant, il est important de se rappeler que le BIC n'est qu'un critère parmi d'autres et il peut être utile d'examiner d'autres critères et d'analyser les données de manière plus approfondie pour déterminer le meilleur modèle.
+
+
+
+
+
+
+
+# Conclusion
+
+Pour conclure, nous avons effectué une analyse bayésienne, et en effectuant une analyse sur les données, on a trouvé que 90 % de la population paie des impôts aux États-Unis, mais beaucoup de personnes en ont une perception erronée. Nous avons ensuite procéder par une selection de modèles de régression linéaire en utilisant le critère du `"BIC"` et on a proposé un modèle afin d'essayer de prédire qui sont les personnes qui font une erreur de perception entre les contribuables.
+
+
+
+# Références
