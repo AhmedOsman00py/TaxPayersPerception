@@ -661,7 +661,7 @@ En conclusion, le modèle de régression multiple avec 9 variables explicatives 
 
 # Conclusion
 
-
+Pour conclure, nous avons effectué une analyse bayésienne, et en effectuant une analyse sur les données, on a trouvé que 90 % de la population paie des impôts aux États-Unis, mais beaucoup de personnes en ont une perception erronée. Nous avons ensuite procéder par une selection de modèles de régression linéaire en utilisant le critère du `"BIC"` et on a proposé un modèle afin d'essayer de prédire qui sont les personnes qui font une erreur de perception entre les contribuables.
 
 
 
