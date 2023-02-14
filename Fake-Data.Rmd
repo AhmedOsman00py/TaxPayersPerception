@@ -27,7 +27,7 @@ sort(unique(datatax$gender))
 ```
 
 ```{r}
-fake_data <- as.data.frame(array(NA, c(400,10)))
+fake_data <- as.data.frame(array(NA, c(500,10)))
 colnames(fake_data) <- names(datatax)
 head(fake_data)
 ```
@@ -55,7 +55,7 @@ head(fake_data)
 
 
 ```{r}
-for (i in 1:400){
+for (i in 1:500){
   fake_data[i,"gender"] = sample(sort(unique(datatax$gender)), 1, prob = gender_prob)
   fake_data[i,"educ"] = sample(sort(unique(datatax$educ)),1, prob = educ_prob)
   fake_data[i,"firstthought_sentiment"] = sample(sort(unique(datatax$firstthought_sentiment)),1, prob = firstthought_prob)
@@ -67,7 +67,7 @@ for (i in 1:400){
   fake_data[i,"benefit_sentiment"] = sample(sort(unique(datatax$benefit_sentiment)),1, prob = benifit_prob)
 }
 
-fake_data$percenttp = runif(400, min = 0, max = 100)
+fake_data$percenttp = runif(500, min = 0, max = 100)
 head(fake_data)
 ```
 
@@ -75,7 +75,7 @@ head(fake_data)
 library(fastDummies)
 gender = fake_data$gender
 gender <- dummy_cols(gender, remove_first_dummy = TRUE)
-colnames(gender) <- c(0,"one","two","three")
+colnames(gender) <- c(0,"gender2","gender3","gender4")
 head(gender)
 
 ```
@@ -84,15 +84,15 @@ head(gender)
 alpha = 30
 beta <- c(-7,-8,-2)
 sigma <- 18
-abs(regression_norm(gender$one[1] , gender$two[1], gender$three[1] ,alpha,beta,sigma))
+abs(regression_norm( gender$gender3[1], gender$gender4[1], gender$gender1[1] ,alpha,beta,sigma))
 ```
 
 ```{r}
 regression_norm <- function(x,y,z,alpha,beta,sigma){
   return(abs(rnorm(1,alpha + beta[1]*x + beta[2]*y + beta[3]*z,sigma)))
 }
-for (i in 1:400){
- gender$gap[i] <-regression_norm(gender$one[i] , gender$two[i], gender$three[i] ,alpha,beta,sigma)
+for (i in 1:500){
+ gender$gap[i] <-regression_norm(gender$gender2[i] , gender$gender3[i], gender$gender4[i] ,alpha,beta,sigma)
 }
 gender$gap
 ```
@@ -107,7 +107,7 @@ options(mc.cores = parallel::detectCores())
 ```
 
 ```{r}
-x <- gender[c("one","two","three")]
+x <- gender[c("gender2","gender3","gender4")]
 x
 ```
 
@@ -131,13 +131,38 @@ beta ~ normal(0, 10);
 alpha ~ normal(0, 10);
 }"
 
-N <- 400
+N <- 500
 K <- 3
 ```
 
 ```{r}
-fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x= x ,y=gender$gap))
-
+source("stanTools.R")
+source("functions.R")
+parametreTable <- function(fit, pars=names(fit)){
+  rstan:::monitor(as.array(fit, pars = pars), warmup =0, print = FALSE)
+}
 ```
 
+
+```{r}
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x= x ,y=gender$gap))
+estimated <- parametreTable(fit1)
+estimated
+```
+
+```{r}
+a <- estimated$mean
+b <- c(beta,alpha,sigma,0)
+comparaison <- as.data.frame(estimated[,1:1])
+comparaison$real = b
+comparaison
+```
+
+```{r}
+head(fake_data)
+```
+
+```{r}
+unique(fake_data$gender)
+```
 
