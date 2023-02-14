@@ -76,28 +76,40 @@ library(fastDummies)
 gender = fake_data$gender
 gender <- dummy_cols(gender, remove_first_dummy = TRUE)
 colnames(gender) <- c(0,"one","two","three")
-gender$one
+head(gender)
+
 ```
 
 ```{r}
 alpha = 30
 beta <- c(-7,-8,-2)
+sigma <- 18
+abs(regression_norm(gender$one[1] , gender$two[1], gender$three[1] ,alpha,beta,sigma))
 ```
 
 ```{r}
-regression <- function(x,y,z,alpha,beta){
-  return(alpha + beta[1]*x + beta[2]*y + beta[3]*z)
+regression_norm <- function(x,y,z,alpha,beta,sigma){
+  return(abs(rnorm(1,alpha + beta[1]*x + beta[2]*y + beta[3]*z,sigma)))
 }
-
-gender$gap <- regression(gender$one , gender$two, gender$three ,alpha,beta)
+for (i in 1:400){
+ gender$gap[i] <-regression_norm(gender$one[i] , gender$two[i], gender$three[i] ,alpha,beta,sigma)
+}
 gender$gap
 ```
+
+
+
+
 ```{r}
 library(rstan)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 
+```{r}
+x <- gender[c("one","two","three")]
+x
+```
 
 ```{r}
 stan_model <- "
@@ -119,12 +131,12 @@ beta ~ normal(0, 10);
 alpha ~ normal(0, 10);
 }"
 
-N <- nrow(gender)
-K <- ncol(gender)-1
+N <- 400
+K <- 3
 ```
 
 ```{r}
-fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x=subset(gender, select = -income),y=gender$gap))
+fit1 <- stan(model_code = stan_model, data= list(N=N, K=K, x= x ,y=gender$gap))
 
 ```
 
